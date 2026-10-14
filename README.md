@@ -13,6 +13,8 @@
 | Windows · macOS · Linux | [school_21_desktop](https://github.com/Dlzxn/school_21_desktop) | [последний релиз](https://github.com/Dlzxn/school_21_desktop/releases/latest) |
 | iPhone | [school_21_ios](https://github.com/Dlzxn/school_21_ios) | [последний релиз](https://github.com/Dlzxn/school_21_ios/releases/latest) |
 
+🌐 Все версии и инструкции по установке на одной странице — **[sc21-apps.github.io](https://sc21-apps.github.io)**
+
 ## Возможности
 
 - **Платформа на весь экран** — тёмная тема в цвет сайта, свайп «назад», pull-to-refresh, экран «Нет подключения».
