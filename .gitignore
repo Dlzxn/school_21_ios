@@ -1,0 +1,18 @@
+# Генерируется XcodeGen из project.yml
+School21.xcodeproj/
+School21/Info.plist
+School21/School21.entitlements
+Widget/Info.plist
+Widget/Widget.entitlements
+
+# Сборка
+build/
+DerivedData/
+Payload/
+*.ipa
+*.xcarchive
+
+.DS_Store
+.idea/
+.vscode/
+xcuserdata/
