@@ -21,16 +21,22 @@ enum SyncService {
     static func run() async {
         guard let creds = Keychain.loadCredentials() else {
             SharedStore.saveSnapshot(nil)
+            SharedStore.saveStatus(error: nil)
             WidgetCenter.shared.reloadAllTimelines()
             return
         }
         let now = Date()
         let agenda = (try? await PlatformAPI.agenda(from: now, to: now.addingTimeInterval(14 * 86_400))) ?? []
 
-        if let snapshot = try? await buildSnapshot(login: creds.apiLogin, agenda: agenda, now: now) {
-            SharedStore.saveSnapshot(snapshot)
-            WidgetCenter.shared.reloadAllTimelines()
+        do {
+            SharedStore.saveSnapshot(try await buildSnapshot(login: creds.apiLogin, agenda: agenda, now: now))
+            SharedStore.saveStatus(error: nil)
+        } catch where Task.isCancelled {
+            // Фоновую задачу прервала iOS — это не ошибка данных.
+        } catch {
+            SharedStore.saveStatus(error: (error as? APIError)?.errorDescription ?? error.localizedDescription)
         }
+        WidgetCenter.shared.reloadAllTimelines()
         if defaults.bool(forKey: SettingsKey.notifyAgenda) {
             scheduleReminders(agenda, now: now)
         }
@@ -44,8 +50,8 @@ enum SyncService {
 
     private static func buildSnapshot(login: String, agenda: [AgendaItem], now: Date) async throws -> Snapshot {
         let participant = try await OpenAPI.participant(login)
-        let points = try await OpenAPI.points(login)
-        let workstation = try await OpenAPI.workstation(login)
+        let points = (try? await OpenAPI.points(login)) ?? Points(peerReviewPoints: 0, codeReviewPoints: 0, coins: 0)
+        let workstation = (try? await OpenAPI.workstation(login)) ?? nil
         let logtime = try? await OpenAPI.logtime(login)
         let coalition = (try? await OpenAPI.coalition(login)) ?? nil
         let campus = (try? await OpenAPI.events(from: now, to: now.addingTimeInterval(14 * 86_400))) ?? []
@@ -131,6 +137,7 @@ enum SyncService {
         defaults.removeObject(forKey: "seenPlatform")
         defaults.removeObject(forKey: "seenEvents")
         SharedStore.saveSnapshot(nil)
+        SharedStore.saveStatus(error: nil)
         WidgetCenter.shared.reloadAllTimelines()
     }
 }

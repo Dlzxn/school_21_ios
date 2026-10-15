@@ -3,11 +3,37 @@ import SwiftUI
 
 /// Общие для приложения и виджета данные: лежат в App Group, виджет только читает.
 enum SharedStore {
-    static let appGroup = "group.ru.school21.ios"
+    static let appGroup = resolveAppGroup()
     private static let snapshotKey = "snapshot"
+    private static let statusKey = "syncStatus"
 
     static var defaults: UserDefaults {
         UserDefaults(suiteName: appGroup) ?? .standard
+    }
+
+    /// AltStore/SideStore при переподписи дописывают к App Group ID команды (group.ru.school21.ios.ABCDE12345),
+    /// поэтому берём реальный идентификатор из профиля, вшитого в приложение (и отдельно — в виджет).
+    private static func resolveAppGroup() -> String {
+        let base = "group.ru.school21.ios"
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: data.subdata(in: start.lowerBound..<end.upperBound), format: nil) as? [String: Any],
+              let entitlements = plist["Entitlements"] as? [String: Any],
+              let groups = entitlements["com.apple.security.application-groups"] as? [String]
+        else { return base }
+        return groups.first { $0.hasPrefix(base) } ?? groups.first ?? base
+    }
+
+    /// Итог последней синхронизации: виджет показывает ошибку вместо «пустого» состояния.
+    static var lastError: String? {
+        defaults.string(forKey: statusKey)
+    }
+
+    static func saveStatus(error: String?) {
+        defaults.set(error, forKey: statusKey)
     }
 
     static func loadSnapshot() -> Snapshot? {

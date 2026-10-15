@@ -70,7 +70,7 @@ struct ProfileWidgetView: View {
         } else {
             VStack(spacing: 6) {
                 Badge(size: 28)
-                Text("Откройте приложение и включите автовход")
+                Text(SharedStore.lastError.map { "Не удалось обновить: \($0)" } ?? "Откройте приложение и включите автовход")
                     .font(.caption2)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.textSecondary)

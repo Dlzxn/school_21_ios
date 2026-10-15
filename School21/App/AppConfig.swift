@@ -21,6 +21,7 @@ enum AppConfig {
     static let githubRepo = "Dlzxn/school_21_ios"
     static let androidRepo = "https://github.com/Dlzxn/school_21_mobile"
     static let desktopRepo = "https://github.com/Dlzxn/school_21_desktop"
+    static let siteURL = "https://sc21-apps.github.io"
     static let authorURL = "https://github.com/Dlzxn"
 
     static let remindBeforeMinutes = 15

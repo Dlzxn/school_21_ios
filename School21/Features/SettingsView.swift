@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var checking = false
     @State private var loginError: String?
     @State private var updateStatus: String?
+    @State private var refreshingWidget = false
+    @State private var widgetStatus = SettingsView.describeWidget()
 
     var body: some View {
         Form {
@@ -91,8 +93,19 @@ struct SettingsView: View {
             Section {
                 Text("Удерживайте палец на экране «Домой» → «+» в углу → School 21. Есть маленький и средний виджеты и виджеты для экрана блокировки.")
                     .font(.callout)
+                Button {
+                    refreshWidget()
+                } label: {
+                    VStack(alignment: .leading) {
+                        Text("Обновить виджет")
+                        Text(widgetStatus).font(.caption).foregroundStyle(Palette.textSecondary)
+                    }
+                }
+                .disabled(refreshingWidget)
             } header: {
                 Text("Виджет")
+            } footer: {
+                Text("App Group: \(SharedStore.appGroup)")
             }
 
             Section("О приложении") {
@@ -108,6 +121,7 @@ struct SettingsView: View {
             }
 
             Section("Экосистема School 21") {
+                Link(destination: URL(string: AppConfig.siteURL)!) { Label("Сайт: sc21-apps.github.io", systemImage: "globe") }
                 Link(destination: URL(string: AppConfig.androidRepo)!) { Label("Версия для Android", systemImage: "iphone") }
                 Link(destination: URL(string: AppConfig.desktopRepo)!) { Label("Windows · macOS · Linux", systemImage: "desktopcomputer") }
             }
@@ -174,5 +188,24 @@ struct SettingsView: View {
                 updateStatus = "Не удалось проверить обновления"
             }
         }
+    }
+
+    private func refreshWidget() {
+        refreshingWidget = true
+        widgetStatus = "Обновляю…"
+        Task {
+            await SyncService.run()
+            widgetStatus = Self.describeWidget()
+            refreshingWidget = false
+        }
+    }
+
+    /// Что сейчас видит виджет: время данных или ошибку последней синхронизации.
+    private static func describeWidget() -> String {
+        if let error = SharedStore.lastError { return "Ошибка: \(error)" }
+        guard let snapshot = SharedStore.loadSnapshot() else { return "Данных пока нет" }
+        let time = DateFormatter()
+        time.dateFormat = "d.MM HH:mm"
+        return "Данные от \(time.string(from: snapshot.updatedAt)) · \(snapshot.login)"
     }
 }
