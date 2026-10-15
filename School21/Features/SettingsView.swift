@@ -117,6 +117,14 @@ struct SettingsView: View {
                         Text(updateStatus ?? "Версия \(AppConfig.version)").font(.caption).foregroundStyle(Palette.textSecondary)
                     }
                 }
+                Button {
+                    Task { await UpdateChecker.addAltStoreSource() }
+                } label: {
+                    VStack(alignment: .leading) {
+                        Text("Добавить источник в AltStore")
+                        Text("Новые версии будут видны и ставиться прямо в AltStore").font(.caption).foregroundStyle(Palette.textSecondary)
+                    }
+                }
                 Link("Исходный код и релизы", destination: URL(string: "https://github.com/\(AppConfig.githubRepo)")!)
             }
 
@@ -179,8 +187,8 @@ struct SettingsView: View {
         Task {
             do {
                 if let update = try await UpdateChecker.latest() {
-                    updateStatus = "Доступна версия \(update.version)"
-                    _ = await UIApplication.shared.open(update.url)
+                    updateStatus = "Доступна версия \(update.version) — открываю AltStore"
+                    await UpdateChecker.install(update)
                 } else {
                     updateStatus = "У вас последняя версия"
                 }

@@ -23,6 +23,7 @@ struct ContentView: View {
     @EnvironmentObject private var web: WebStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var showMenu = false
+    @State private var update: UpdateChecker.Update?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -56,6 +57,13 @@ struct ContentView: View {
             .padding(.trailing, 18)
             .padding(.bottom, 12)
             .accessibilityLabel("Меню")
+
+            if let update {
+                UpdateBanner(version: update.version, install: {
+                    self.update = nil
+                    Task { await UpdateChecker.install(update) }
+                }, dismiss: { self.update = nil })
+            }
         }
         .sheet(isPresented: $showMenu) {
             MenuSheet(close: { showMenu = false })
@@ -64,6 +72,7 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
         }
         .task { await SyncService.run() }
+        .task { update = await UpdateChecker.latestIfDue() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active: Task { await SyncService.run() }
@@ -71,6 +80,35 @@ struct ContentView: View {
             default: break
             }
         }
+    }
+}
+
+/// Карточка «Доступна новая версия» внизу экрана.
+struct UpdateBanner: View {
+    let version: String
+    let install: () -> Void
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Доступна версия \(version)").font(.headline)
+            Text("AltStore скачает и установит её — вход и настройки сохранятся.")
+                .font(.callout).foregroundStyle(Palette.textSecondary)
+            HStack {
+                Spacer()
+                Button("Не сейчас", action: dismiss).buttonStyle(.borderless)
+                Button("Обновить", action: install)
+                    .buttonStyle(.borderedProminent)
+                    .foregroundStyle(Palette.onAccent)
+            }
+        }
+        .padding(16)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 72)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
     }
 }
 

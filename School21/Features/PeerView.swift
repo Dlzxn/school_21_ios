@@ -9,6 +9,7 @@ struct PeerView: View {
     @State private var error: String?
     @State private var result: PeerResult?
     @FocusState private var focused: Bool
+    @ObservedObject private var friends = FriendsStore.shared
 
     private struct PeerResult {
         let participant: Participant
@@ -151,6 +152,14 @@ struct PeerView: View {
             Button("Открыть профиль на платформе") { openProfile(p.login) }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
+            if p.login.lowercased() != ownLogin {
+                let isFriend = friends.contains(p.login)
+                Button(isFriend ? "В друзьях" : "Добавить в друзья") { friends.add(p.login) }
+                    .buttonStyle(.bordered)
+                    .tint(Palette.green)
+                    .frame(maxWidth: .infinity)
+                    .disabled(isFriend || friends.logins.count >= FriendsStore.maxCount)
+            }
         }
         .padding(20)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 22))

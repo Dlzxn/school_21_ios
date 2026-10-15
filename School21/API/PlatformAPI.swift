@@ -1,3 +1,4 @@
+import UIKit
 import Foundation
 
 /// Внутренний GraphQL сайта (только query). Особенности шлюза: авторизация cookie tokenId,
@@ -83,7 +84,16 @@ enum PlatformAPI {
 
 /// Последний релиз iOS-версии на GitHub.
 enum UpdateChecker {
-    static func latest() async throws -> (version: String, url: URL)? {
+    struct Update {
+        let version: String
+        let page: URL
+        /// Прямая ссылка на School21.ipa из релиза.
+        let ipa: URL?
+    }
+
+    private static let lastCheckKey = "lastUpdateCheck"
+
+    static func latest() async throws -> Update? {
         let url = URL(string: "https://api.github.com/repos/\(AppConfig.githubRepo)/releases/latest")!
         let (data, response) = try await URLSession.shared.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
@@ -91,7 +101,44 @@ enum UpdateChecker {
               let tag = json["tag_name"] as? String,
               let page = (json["html_url"] as? String).flatMap(URL.init(string:)) else { return nil }
         let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-        return isNewer(version, than: AppConfig.version) ? (version, page) : nil
+        let ipa = (json["assets"] as? [[String: Any]] ?? [])
+            .first { ($0["name"] as? String)?.hasSuffix(".ipa") == true }
+            .flatMap { ($0["browser_download_url"] as? String).flatMap(URL.init(string:)) }
+        return isNewer(version, than: AppConfig.version) ? Update(version: version, page: page, ipa: ipa) : nil
+    }
+
+    /// Проверка при запуске — не чаще раза в 6 часов.
+    static func latestIfDue() async -> Update? {
+        let last = UserDefaults.standard.double(forKey: lastCheckKey)
+        guard Date().timeIntervalSince1970 - last > 6 * 3600 else { return nil }
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastCheckKey)
+        return try? await latest()
+    }
+
+    /// Поставить новую версию: AltStore или SideStore скачают IPA и переподпишут его сами.
+    /// Если ни того ни другого нет — страница релиза в Safari.
+    @MainActor
+    static func install(_ update: Update) async {
+        if let ipa = update.ipa?.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {
+            for scheme in ["altstore", "sidestore"] {
+                if let url = URL(string: "\(scheme)://install?url=\(ipa)"), await UIApplication.shared.open(url) {
+                    return
+                }
+            }
+        }
+        await UIApplication.shared.open(update.page)
+    }
+
+    /// Добавить источник School 21 Apps в AltStore — тогда обновления видны прямо в нём.
+    @MainActor
+    static func addAltStoreSource() async {
+        let source = AppConfig.altStoreSource.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        for scheme in ["altstore", "sidestore"] {
+            if let url = URL(string: "\(scheme)://source?url=\(source)"), await UIApplication.shared.open(url) {
+                return
+            }
+        }
+        if let site = URL(string: AppConfig.siteURL) { await UIApplication.shared.open(site) }
     }
 
     static func isNewer(_ a: String, than b: String) -> Bool {

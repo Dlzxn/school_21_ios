@@ -7,6 +7,7 @@ enum SettingsKey {
     static let notifyAgenda = "notifyAgenda"
     static let notifyPlatform = "notifyPlatform"
     static let notifyEvents = "notifyEvents"
+    static let notifyFriends = "notifyFriends"
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [notifyAgenda: true, notifyPlatform: true, notifyEvents: false])
@@ -46,6 +47,26 @@ enum SyncService {
         if defaults.bool(forKey: SettingsKey.notifyEvents) {
             await checkEvents(now: now)
         }
+        if defaults.bool(forKey: SettingsKey.notifyFriends) {
+            await checkFriends()
+        }
+    }
+
+    /// «Друг пришёл в кампус». Первая проверка только запоминает, кто где.
+    private static func checkFriends() async {
+        let logins = Friends.storedLogins
+        guard !logins.isEmpty else { return }
+        let now = await Friends.places(logins)
+        let before = Friends.lastPlaces
+        if let before {
+            for (login, ws) in Friends.arrivals(before: before, now: now).prefix(5) {
+                Notifier.show(id: "friend-\(login)", title: "\(login) теперь в кампусе", body: ws.label)
+            }
+        }
+        // Для друзей, по которым запрос не удался, оставляем прежнее значение.
+        var merged = before ?? [:]
+        for (login, ws) in now { merged[login] = ws?.label ?? "" }
+        Friends.lastPlaces = merged.filter { logins.contains($0.key) }
     }
 
     private static func buildSnapshot(login: String, agenda: [AgendaItem], now: Date) async throws -> Snapshot {

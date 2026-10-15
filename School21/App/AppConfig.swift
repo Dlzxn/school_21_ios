@@ -22,6 +22,8 @@ enum AppConfig {
     static let androidRepo = "https://github.com/Dlzxn/school_21_mobile"
     static let desktopRepo = "https://github.com/Dlzxn/school_21_desktop"
     static let siteURL = "https://sc21-apps.github.io"
+    /// Источник для AltStore/SideStore с последней версией IPA.
+    static let altStoreSource = "https://sc21-apps.github.io/altstore.json"
     static let authorURL = "https://github.com/Dlzxn"
 
     static let remindBeforeMinutes = 15

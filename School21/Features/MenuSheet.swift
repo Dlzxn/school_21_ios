@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Меню «⋯»: закладки и стартовая страница, «Где сидит пир», поделиться, Safari, настройки.
+/// Меню «⋯»: закладки и стартовая страница, «Где сидит пир», «Мои друзья», поделиться, Safari, настройки.
 struct MenuSheet: View {
     let close: () -> Void
     @EnvironmentObject private var web: WebStore
@@ -40,6 +40,14 @@ struct MenuSheet: View {
                         })
                     } label: {
                         Label("Где сидит пир", systemImage: "mappin.and.ellipse")
+                    }
+                    NavigationLink {
+                        FriendsView(openProfile: { login in
+                            close()
+                            if let url = URL(string: "\(AppConfig.platformOrigin)/profile/\(login)") { web.open(url) }
+                        })
+                    } label: {
+                        Label("Мои друзья", systemImage: "person.2")
                     }
                     Button {
                         close()
